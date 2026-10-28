@@ -27,7 +27,7 @@ skipped_devices=0
 
 #reading/storing the yaml policy
 with open("PA2_policy.yaml", "r") as f:
-   policy =yaml.safe_load(f)  
+   policy =yaml.safe_load(f) or {} #if its empty will give empty dict rather then None
 
 
 for device in root.findall("device"): #searching the whole root 
@@ -42,28 +42,61 @@ for device in root.findall("device"): #searching the whole root
        else:
         roles[role]= 1
 
-       
+       down_count = 0 # polcy 2 counter
       
        for interface in device.findall("interface"): 
+
+         
+
+
         #check every interfaces status in the device
          if interface.get("status") in ("up", "down"):
              interfaces[interface.get("status")] += 1 #incerment the status its in
+
+             if interface.get("status") == "down":
+                down_count+=1 # counter for policy #2
+            
+        
          else: 
              interfaces["other"]+=1
        
+      #policy 2 
+       if policy.get("max_down_interfaces") is not None:
+          
+         if down_count > policy.get("max_down_interfaces"):
+        
+          print ("down violation!")
+
+          violations.append({
+             "device": device.get("id"),
+            "down": down_count,
+            "type": "too_many_down"
+             
+          })
+         
        id = device.get("id")
        ids.append(id)
        print(f'Role:{role}\nid: {id}\n')
        total_devices+=1
+      
+       
 
-       #policy 
+       #policy 1 missing owner
+        
        if policy.get("require_owner", False): #checks wheater the polciy requres an owner
         owner= device.findtext("owner") #returns none if doesnt exit
-        
+
+ 
         if owner is None:
-         violations.append({"device": device.get("id"), "type": "missing_owner"})
-        
-        
+         violations.append({"device": device.get("id"),
+                            "type": "missing_owner"})
+        else:
+           if owner.strip() == "":
+           
+            violations.append({"device": device.get("id"),
+                                   "type": "missing_owner"})
+
+           
 
 #report dict
 
